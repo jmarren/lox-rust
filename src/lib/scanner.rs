@@ -69,8 +69,30 @@ impl Scanner {
         }
     }
 
-
-
+    // similar to self.advance(), but does not consume the character
+    fn peek(&self) -> Option<char> {
+        if self.is_at_end() {
+            Some('\0')
+        } else {
+            self.source.chars().nth(self.current)
+        }
+    }
+    
+    // if we find a slash we check for another slash
+    // if present, we consume tokens until the end of the line
+    // and return Skip
+    //
+    // otherwise we treat it as a division operator and return Slash
+    fn handle_slash(&mut self) -> TokenType {
+         if self.try_match('/') {
+             while self.peek() != Some('\n') && !self.is_at_end() {
+                 self.advance();
+             }
+             TokenType::Skip
+         } else {
+             TokenType::Slash
+         }
+    }
 
     fn scan_token(&mut self) {
         if let Some(c) = self.advance() {
@@ -85,17 +107,18 @@ impl Scanner {
                     '-' => TokenType::Minus,
                     '+' => TokenType::Plus,
                     ';' => TokenType::Semicolon,
-                    '/' => TokenType::Slash,
                     '*' => TokenType::Star,
                     '!' => self.if_next_else('=', TokenType::BangEqual, TokenType::Bang ),
                     '=' => self.if_next_else('=', TokenType::EqualEqual, TokenType::Equal),
                     '<' => self.if_next_else('=', TokenType::LessEqual, TokenType::Less),
                     '>' => self.if_next_else('=', TokenType::GreaterEqual, TokenType::Greater),
+                    '/' => self.handle_slash(),
                     _ => TokenType::Invalid,
             };
         
             match token {
                 TokenType::Invalid => unexpected_character(self.line),
+                TokenType::Skip => (),
                 _ => self.add_token(token),
             };
 
