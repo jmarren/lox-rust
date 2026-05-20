@@ -2,6 +2,8 @@ use crate::lib::{error::{self, unexpected_character}, token::{Token, TokenType}}
 
 
 
+
+
 pub struct Scanner {
     source: String,
     tokens: Vec<Token>,
@@ -85,19 +87,68 @@ impl Scanner {
     // otherwise we treat it as a division operator and return Slash
     fn handle_slash(&mut self) -> TokenType {
          if self.try_match('/') {
-             while self.peek() != Some('\n') && !self.is_at_end() {
-                 self.advance();
-             }
-             TokenType::Skip
-         } else {
-             TokenType::Slash
-         }
+            while self.peek() != Some('\n')  && !self.is_at_end() {
+                self.advance();
+            }
+            TokenType::Skip
+        } else {
+            TokenType::Slash
+        }
     }
+    
+    fn handle_newline(&mut self) -> TokenType {
+         self.line += 1;
+         TokenType::Skip
+    }
+
+  // while (peek() != '"' && !isAtEnd()) {
+  //     if (peek() == '\n') line++;
+  //     advance();
+  //   }
+  //
+  //   if (isAtEnd()) {
+  //     Lox.error(line, "Unterminated string.");
+  //     return;
+  //   }
+  //
+  //   // The closing ".
+  //   advance();
+  //
+  //   // Trim the surrounding quotes.
+  //   String value = source.substring(start + 1, current - 1);
+  //   addToken(STRING, value);
+
+    fn handle_string(&mut self) -> TokenType {
+        while self.peek() != Some('"') && !self.is_at_end() {
+            if self.peek() == Some('\n') { 
+                self.line += 1;
+                self.advance();
+            }
+        }
+
+        if self.is_at_end() {
+            error::unterminated_string(self.line);
+            return TokenType::Skip;
+        }
+    
+        // advance past the closing '"'
+        self.advance();
+
+        let str_val = self.source[self.start + 1.. self.current-1].to_string();
+        TokenType::String(str_val)
+
+    }
+
 
     fn scan_token(&mut self) {
         if let Some(c) = self.advance() {
 
             let token = match c {
+                    ' ' => TokenType::Skip,
+                    '\r' => TokenType::Skip,
+                    '\t' => TokenType::Skip,
+                    '\n' => self.handle_newline(),
+                    '"' => self.handle_string(),
                     '(' => TokenType::LeftParen,
                     ')' => TokenType::RightParen,
                     '{' => TokenType::LeftBrace,

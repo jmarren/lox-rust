@@ -24,3 +24,8 @@ pub fn unexpected_character(line_no: usize) {
 }
 
 
+pub fn unterminated_string(line_no: usize) {
+            println!("unterminated string at line {line_no}");
+}
+
+

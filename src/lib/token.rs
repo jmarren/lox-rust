@@ -30,7 +30,7 @@ pub enum TokenType {
   Less, LessEqual,
 
   // Literals.
-  Identifier, String, Number,
+  Identifier, String(String), Number,
 
   // Keywords.
   And, Class, Else, False, Fun, For, If, Nil, Or,
@@ -38,6 +38,8 @@ pub enum TokenType {
    
   // Special Processing States
   Invalid, Skip,
+
+
 
   Eof
 }
