@@ -32,8 +32,11 @@ impl Scanner {
     }
 
     fn advance(&mut self) -> Option<char> {
+        // set out the the current character
+        let out = self.source.chars().nth(self.current);
+        // increment current pointer
         self.current += 1;
-        self.source.chars().nth(self.current)
+        out
     }
 
     fn add_token(&mut self, token_type: TokenType) {
@@ -42,13 +45,27 @@ impl Scanner {
     }
 
     fn try_match(&mut self, expected: char) -> bool {
+        // false if at end of source
         if self.is_at_end() {
-            false
-        } else if let Some(found) = self.source.chars().nth(self.current) && found != expected {
-            false
-        } else {
-            self.current += 1;
-            true
+            return false;
+        }
+    
+        // if the current char matches expected, increment current pointer to consume it
+        // and return true
+        match self.source.chars().nth(self.current) {
+            Some(found) if found == expected => {
+                self.current += 1;
+                true
+            }, 
+            _ => false,
+        }
+    }
+    
+
+    fn if_next_else(&mut self, c: char, matched: TokenType, no_match: TokenType) -> TokenType {
+        match self.try_match(c) {
+            true => matched,
+            false => no_match,
         }
     }
 
@@ -58,8 +75,7 @@ impl Scanner {
     fn scan_token(&mut self) {
         if let Some(c) = self.advance() {
 
-                
-                let token = match c {
+            let token = match c {
                     '(' => TokenType::LeftParen,
                     ')' => TokenType::RightParen,
                     '{' => TokenType::LeftBrace,
@@ -71,30 +87,10 @@ impl Scanner {
                     ';' => TokenType::Semicolon,
                     '/' => TokenType::Slash,
                     '*' => TokenType::Star,
-                    '!' => {
-                        match self.try_match('=') {
-                            true => TokenType::BangEqual,
-                            false => TokenType::Bang,
-                        }
-                    },
-                    '=' => {
-                        match self.try_match('=') {
-                            true => TokenType::EqualEqual,
-                            false => TokenType::Equal,
-                        }
-                    },
-                    '<' => {
-                        match self.try_match('=') {
-                            true => TokenType::LessEqual,
-                            false => TokenType::Less,
-                        }
-                    },
-                    '>' => {
-                        match self.try_match('=') {
-                            true => TokenType::GreaterEqual,
-                            false => TokenType::Greater,
-                        }
-                    }
+                    '!' => self.if_next_else('=', TokenType::BangEqual, TokenType::Bang ),
+                    '=' => self.if_next_else('=', TokenType::EqualEqual, TokenType::Equal),
+                    '<' => self.if_next_else('=', TokenType::LessEqual, TokenType::Less),
+                    '>' => self.if_next_else('=', TokenType::GreaterEqual, TokenType::Greater),
                     _ => TokenType::Invalid,
             };
         
