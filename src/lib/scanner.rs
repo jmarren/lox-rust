@@ -1,6 +1,21 @@
 use crate::lib::{error::{self, unexpected_character}, token::{Token, TokenType}};
 
 
+fn is_digit(c: char) -> bool {
+    c >= '0' && c <= '9'
+}
+
+
+fn is_alpha(c: char) -> bool {
+    (c >= 'a' && c <= 'z') || 
+    (c >= 'A' && c <= 'Z') || 
+    c == '_'
+}
+
+
+fn is_alphanumeric(c: char) -> bool {
+    is_alpha(c) || is_digit(c)
+}
 
 
 
@@ -72,14 +87,19 @@ impl Scanner {
     }
 
     // similar to self.advance(), but does not consume the character
-    fn peek(&self) -> Option<char> {
-        if self.is_at_end() {
-            Some('\0')
-        } else {
-            self.source.chars().nth(self.current)
+    fn peek(&self) -> char {
+        match self.source.chars().nth(self.current) {
+            Some(c) => c,
+            None => '\0',
         }
     }
     
+    fn peek_next(&self) -> char {
+        match self.source.chars().nth(self.current + 1) {
+            Some(c) => c,
+            None => '\0',
+        }
+    }
     // if we find a slash we check for another slash
     // if present, we consume tokens until the end of the line
     // and return Skip
@@ -87,7 +107,7 @@ impl Scanner {
     // otherwise we treat it as a division operator and return Slash
     fn handle_slash(&mut self) -> TokenType {
          if self.try_match('/') {
-            while self.peek() != Some('\n')  && !self.is_at_end() {
+            while self.peek() != '\n'  && !self.is_at_end() {
                 self.advance();
             }
             TokenType::Skip
@@ -101,26 +121,9 @@ impl Scanner {
          TokenType::Skip
     }
 
-  // while (peek() != '"' && !isAtEnd()) {
-  //     if (peek() == '\n') line++;
-  //     advance();
-  //   }
-  //
-  //   if (isAtEnd()) {
-  //     Lox.error(line, "Unterminated string.");
-  //     return;
-  //   }
-  //
-  //   // The closing ".
-  //   advance();
-  //
-  //   // Trim the surrounding quotes.
-  //   String value = source.substring(start + 1, current - 1);
-  //   addToken(STRING, value);
-
     fn handle_string(&mut self) -> TokenType {
-        while self.peek() != Some('"') && !self.is_at_end() {
-            if self.peek() == Some('\n') { 
+        while self.peek() != '"' && !self.is_at_end() {
+            if self.peek() == '\n' { 
                 self.line += 1;
                 self.advance();
             }
@@ -139,6 +142,30 @@ impl Scanner {
 
     }
 
+
+    
+    fn handle_digit(&mut self) -> TokenType {
+        
+        // consume while digits
+        while is_digit(self.peek()) {
+            self.advance();
+        };
+
+    
+        if self.peek() == '.' && is_digit(self.peek_next()) {
+            // consume the '.'
+            self.advance();
+            
+            // consume trailing digits
+            while is_digit(self.peek()) {
+                self.advance();
+            };
+        }
+        match self.source[self.start + 1.. self.current-1].parse::<f64>() {
+            Ok(val) => TokenType::Number(val),
+            Err(e) => panic!("{e}")
+        }
+    }
 
     fn scan_token(&mut self) {
         if let Some(c) = self.advance() {
@@ -164,6 +191,7 @@ impl Scanner {
                     '<' => self.if_next_else('=', TokenType::LessEqual, TokenType::Less),
                     '>' => self.if_next_else('=', TokenType::GreaterEqual, TokenType::Greater),
                     '/' => self.handle_slash(),
+                    _ if is_digit(c) => self.handle_digit(),
                     _ => TokenType::Invalid,
             };
         
