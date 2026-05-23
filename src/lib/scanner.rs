@@ -167,6 +167,35 @@ impl Scanner {
         }
     }
 
+    fn handle_word(&mut self) -> TokenType {
+        while is_alphanumeric(self.peek()) {
+            self.advance();
+        }
+
+        let word = &self.source[self.start.. self.current];
+
+        match word {
+            "and" => TokenType::And,
+            "class" => TokenType::Class,
+            "else" => TokenType::Else,
+            "false" => TokenType::False,
+            "for" => TokenType::For,
+            "fun" => TokenType::Fun,
+            "if" => TokenType::If,
+            "nil" => TokenType::Nil,
+            "or" => TokenType::Or,
+            "print" => TokenType::Print,
+            "return" => TokenType::Return,
+            "super" => TokenType::Super,
+            "this" => TokenType::This,
+            "true" => TokenType::True,
+            "var" => TokenType::Var,
+            "while" => TokenType::While,
+            _ => TokenType::Identifier(word.to_string()),
+        }
+
+    }
+
     fn scan_token(&mut self) {
         if let Some(c) = self.advance() {
 
@@ -192,6 +221,7 @@ impl Scanner {
                     '>' => self.if_next_else('=', TokenType::GreaterEqual, TokenType::Greater),
                     '/' => self.handle_slash(),
                     _ if is_digit(c) => self.handle_digit(),
+                    _ if is_alpha(c) => self.handle_word(),
                     _ => TokenType::Invalid,
             };
         
@@ -205,22 +235,3 @@ impl Scanner {
     }
 }
 
-  // List<Token> scanTokens() {
-  //   while (!isAtEnd()) {
-  //     // We are at the beginning of the next lexeme.
-  //     start = current;
-  //     scanToken();
-  //   }
-  //
-  //   tokens.add(new Token(EOF, "", null, line));
-  //   return tokens;
-  // }
-  //
-// class Scanner {
-//   private final String source;
-//   private final List<Token> tokens = new ArrayList<>();
-//
-//   Scanner(String source) {
-//     this.source = source;
-//   }
-// }
