@@ -1,5 +1,5 @@
 
-
+#[derive(Debug)]
 pub struct Token {
     token_type: TokenType,
     lexeme: String,
@@ -18,6 +18,7 @@ impl Token {
 }
 
 
+#[derive(Debug)]
 pub enum TokenType {
   // Single-character tokens.
   LeftParen, RightParen, LeftBrace, RightBrace,

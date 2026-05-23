@@ -1,10 +1,12 @@
 // use error;
-mod error;
+pub mod error;
 mod token;
 mod scanner;
 
 
 use tokio::io::{self, AsyncWriteExt};
+
+use crate::lib::scanner::Scanner;
 
 pub async fn run_file(path: &str) {
     match tokio::fs::read_to_string(path).await  {
@@ -30,6 +32,11 @@ pub async fn run_prompt() {
 }
 
 async fn run(contents: &str) {
+    let mut scanner = Scanner::new(contents.to_string());
+
+    let tokens = scanner.scan();
+    
+    println!("tokens: {:?}", tokens);
 
 }
 

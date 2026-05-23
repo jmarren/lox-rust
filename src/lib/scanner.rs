@@ -28,7 +28,7 @@ pub struct Scanner {
 }
 
 impl Scanner {
-    fn new(source: String) -> Self {
+    pub fn new(source: String) -> Self {
         Self {
             source,
             tokens: Vec::new(),
@@ -42,10 +42,14 @@ impl Scanner {
         self.current >= self.source.len()
     }
 
-    fn scan_tokens() -> Vec<Token> {
-        loop {
-            
+    pub fn scan(&mut self) -> &[Token] {
+        while !self.is_at_end() {
+            self.start = self.current;
+            self.scan_token();
         }
+    
+        self.tokens.push(Token::new(TokenType::Eof, "".to_string(), self.line));
+        &self.tokens
     }
 
     fn advance(&mut self) -> Option<char> {
@@ -125,8 +129,8 @@ impl Scanner {
         while self.peek() != '"' && !self.is_at_end() {
             if self.peek() == '\n' { 
                 self.line += 1;
-                self.advance();
             }
+            self.advance();
         }
 
         if self.is_at_end() {
@@ -198,7 +202,6 @@ impl Scanner {
 
     fn scan_token(&mut self) {
         if let Some(c) = self.advance() {
-
             let token = match c {
                     ' ' => TokenType::Skip,
                     '\r' => TokenType::Skip,
