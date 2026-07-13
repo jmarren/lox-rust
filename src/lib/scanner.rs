@@ -1,24 +1,5 @@
 use crate::lib::{error::{self, unexpected_character}, token::{Token, TokenType}};
 
-
-fn is_digit(c: char) -> bool {
-    c >= '0' && c <= '9'
-}
-
-
-fn is_alpha(c: char) -> bool {
-    (c >= 'a' && c <= 'z') || 
-    (c >= 'A' && c <= 'Z') || 
-    c == '_'
-}
-
-
-fn is_alphanumeric(c: char) -> bool {
-    is_alpha(c) || is_digit(c)
-}
-
-
-
 pub struct Scanner {
     source: String,
     tokens: Vec<Token>,
@@ -38,10 +19,6 @@ impl Scanner {
         }
     }
 
-    fn is_at_end(&self) -> bool {
-        self.current >= self.source.len()
-    }
-
     pub fn scan(&mut self) -> &[Token] {
         while !self.is_at_end() {
             self.start = self.current;
@@ -51,7 +28,13 @@ impl Scanner {
         self.tokens.push(Token::new(TokenType::Eof, "".to_string(), self.line));
         &self.tokens
     }
+    
+    /// whether current is at end of source
+    fn is_at_end(&self) -> bool {
+        self.current >= self.source.len()
+    }
 
+    /// returns the current character and moves current forward by 1
     fn advance(&mut self) -> Option<char> {
         // set out the the current character
         let out = self.source.chars().nth(self.current);
@@ -60,11 +43,15 @@ impl Scanner {
         out
     }
 
+    /// get the source contents from self.start to self.current, retrieve its token type,
+    /// and push it in to self.tokens
     fn add_token(&mut self, token_type: TokenType) {
         let source_text = &self.source[self.start..self.current];
         self.tokens.push(Token::new(token_type, source_text.to_string(), self.line));
     }
-
+    
+    /// If the current char matches expected, increments current pointer to consume it,
+    /// then returns true. Otherwise returns false.
     fn try_match(&mut self, expected: char) -> bool {
         // false if at end of source
         if self.is_at_end() {
@@ -82,7 +69,10 @@ impl Scanner {
         }
     }
     
-
+    /// Tries to match the provided character.
+    /// If it is matched the matched type is returned and the current pointer is incremented to 
+    /// consume it.
+    /// otherwise the no_match type is returned
     fn if_next_else(&mut self, c: char, matched: TokenType, no_match: TokenType) -> TokenType {
         match self.try_match(c) {
             true => matched,
@@ -90,27 +80,36 @@ impl Scanner {
         }
     }
 
-    // similar to self.advance(), but does not consume the character
+    /// returns the current character or '\0' if None
+    /// 
+    /// does NOT increment current pointer
     fn peek(&self) -> char {
-        match self.source.chars().nth(self.current) {
-            Some(c) => c,
-            None => '\0',
-        }
+        self.source
+            .chars()
+            .nth(self.current)
+            .unwrap_or('\0')
     }
     
+    /// returns the next character or '\0' if None
+    /// 
+    /// does NOT alter current pointer
     fn peek_next(&self) -> char {
-        match self.source.chars().nth(self.current + 1) {
-            Some(c) => c,
-            None => '\0',
-        }
+        self.source
+            .chars()
+            .nth(self.current + 1)
+            .unwrap_or('\0')
     }
-    // if we find a slash we check for another slash
-    // if present, we consume tokens until the end of the line
-    // and return Skip
-    //
-    // otherwise we treat it as a division operator and return Slash
+
+    /// if we find a slash we check for another slash (meaning comment)
+    /// if present, we consume tokens until the end of the line
+    /// and return Skip
+    ///
+    /// otherwise we treat it as a division operator and return TokenType::Slash
     fn handle_slash(&mut self) -> TokenType {
+         // if we match another slash,
+         // advance until newline
          if self.try_match('/') {
+             // (?) Should this use handle_newline? 
             while self.peek() != '\n'  && !self.is_at_end() {
                 self.advance();
             }
@@ -120,11 +119,19 @@ impl Scanner {
         }
     }
     
+    /// Increments self.line and returns TokenType::Skip
     fn handle_newline(&mut self) -> TokenType {
          self.line += 1;
          TokenType::Skip
     }
 
+    /// Peeks for a double quote or end of source,
+    /// advancing in the process.
+    ///
+    /// If end is reached, prints unterminated string error.
+    ///
+    /// Advances past closing double quote, then returns the
+    /// TokenType::String with collected value enclosed.
     fn handle_string(&mut self) -> TokenType {
         while self.peek() != '"' && !self.is_at_end() {
             if self.peek() == '\n' { 
@@ -142,37 +149,47 @@ impl Scanner {
         self.advance();
 
         let str_val = self.source[self.start + 1.. self.current-1].to_string();
-        TokenType::String(str_val)
+        TokenType::Literal(super::literal::Literal::String(str_val))
 
     }
 
 
-    
+    /// Peeks for more digits, advancing in the process.
+    ///
+    /// If a period is peeked, peeks next for another digit.
+    /// If another is found, consumes the digit and all subsequent digits.
+    ///
+    /// Parses the final result as an f64 and returns a TokenType::Number
+    /// enclosing it.
     fn handle_digit(&mut self) -> TokenType {
         
         // consume while digits
-        while is_digit(self.peek()) {
+        while self.peek().is_digit(10) {
             self.advance();
         };
 
     
-        if self.peek() == '.' && is_digit(self.peek_next()) {
+        if self.peek() == '.' && self.peek_next().is_digit(10) {
             // consume the '.'
             self.advance();
             
             // consume trailing digits
-            while is_digit(self.peek()) {
+            while self.peek().is_digit(10) {
                 self.advance();
             };
         }
+
         match self.source[self.start + 1.. self.current-1].parse::<f64>() {
-            Ok(val) => TokenType::Number(val),
+            Ok(val) => TokenType::Literal(super::literal::Literal::Number(val)),
             Err(e) => panic!("{e}")
         }
     }
-
+    
+    /// Advances while peek is alphanumeric.
+    /// 
+    /// matches result to a TokenType and returns it.
     fn handle_word(&mut self) -> TokenType {
-        while is_alphanumeric(self.peek()) {
+        while self.peek().is_alphanumeric() {
             self.advance();
         }
 
@@ -195,11 +212,15 @@ impl Scanner {
             "true" => TokenType::True,
             "var" => TokenType::Var,
             "while" => TokenType::While,
-            _ => TokenType::Identifier(word.to_string()),
+            _ => TokenType::Literal(super::literal::Literal::Identifier(word.to_string())),
         }
 
     }
 
+    /// Advances and matches character to its simple token type 
+    /// or handler. 
+    ///
+    /// Then retrieves a token result and adds it to self.tokens.
     fn scan_token(&mut self) {
         if let Some(c) = self.advance() {
             let token = match c {
@@ -218,13 +239,13 @@ impl Scanner {
                     '+' => TokenType::Plus,
                     ';' => TokenType::Semicolon,
                     '*' => TokenType::Star,
-                    '!' => self.if_next_else('=', TokenType::BangEqual, TokenType::Bang ),
+                    '!' => self.if_next_else('=', TokenType::BangEqual, TokenType::Bang),
                     '=' => self.if_next_else('=', TokenType::EqualEqual, TokenType::Equal),
                     '<' => self.if_next_else('=', TokenType::LessEqual, TokenType::Less),
                     '>' => self.if_next_else('=', TokenType::GreaterEqual, TokenType::Greater),
                     '/' => self.handle_slash(),
-                    _ if is_digit(c) => self.handle_digit(),
-                    _ if is_alpha(c) => self.handle_word(),
+                    _ if c.is_digit(10) => self.handle_digit(),
+                    _ if c.is_alphabetic() => self.handle_word(),
                     _ => TokenType::Invalid,
             };
         

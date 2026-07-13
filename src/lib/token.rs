@@ -1,8 +1,11 @@
+use crate::lib::literal::Literal;
+
 
 #[derive(Debug)]
 pub struct Token {
-    token_type: TokenType,
+    pub token_type: TokenType,
     lexeme: String,
+    // literal: 
     // TODO literal: 
     line: usize,
 }
@@ -18,7 +21,7 @@ impl Token {
 }
 
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum TokenType {
   // Single-character tokens.
   LeftParen, RightParen, LeftBrace, RightBrace,
@@ -30,8 +33,10 @@ pub enum TokenType {
   Greater, GreaterEqual,
   Less, LessEqual,
 
+  Literal(Literal),
+
   // Literals.
-  Identifier(String), String(String), Number(f64),
+  // Identifier(String), String(String), Number(f64),
 
   // Keywords.
   And, Class, Else, False, Fun, For, If, Nil, Or,
