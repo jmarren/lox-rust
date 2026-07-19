@@ -149,7 +149,7 @@ impl Scanner {
         self.advance();
 
         let str_val = self.source[self.start + 1.. self.current-1].to_string();
-        TokenType::Literal(super::literal::Literal::String(str_val))
+        TokenType::String(str_val)
 
     }
 
@@ -179,8 +179,10 @@ impl Scanner {
             };
         }
 
-        match self.source[self.start + 1.. self.current-1].parse::<f64>() {
-            Ok(val) => TokenType::Literal(super::literal::Literal::Number(val)),
+        let lex = &self.source[self.start..self.current];
+
+        match lex.parse::<f64>() {
+            Ok(val) => TokenType::Number(val),
             Err(e) => panic!("{e}")
         }
     }
@@ -212,7 +214,7 @@ impl Scanner {
             "true" => TokenType::True,
             "var" => TokenType::Var,
             "while" => TokenType::While,
-            _ => TokenType::Literal(super::literal::Literal::Identifier(word.to_string())),
+            _ => TokenType::Identifier(word.to_string()),
         }
 
     }

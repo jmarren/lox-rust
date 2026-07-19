@@ -1,4 +1,4 @@
-use crate::lib::{expression::{Expr, Literal }, literal::Literal, token::{Token, TokenType}};
+use crate::lib::{expression::{Expr, Literal}, token::{Token, TokenType}};
 use std::mem::discriminant;
 
 
@@ -16,6 +16,10 @@ impl Parser {
         }
     }
 
+    pub fn parse(&mut self) -> Expr {
+        self.expression()
+    }
+
   // private Expr equality() {
   //   Expr expr = comparison();
   //
@@ -28,16 +32,16 @@ impl Parser {
   //   return expr;
   // }
   //
-   fn equality(&mut self) {
-        let expr = Expr::Equality;
+   fn equality(&mut self) -> Expr {
+        let mut expr = self.comparison();
     
         while self.match_tokens(vec![TokenType::BangEqual, TokenType::EqualEqual]) {
-            let operator = self.previous();
-            
-            // let right = 
+            let operator = self.previous().unwrap().clone();
+            let right = self.comparison().clone();
+            expr = Expr::Binary(Box::new(expr), operator, Box::new(right));
         }
-
-        // while 
+        
+        expr
    }
 
   // private Expr comparison() {
@@ -53,7 +57,17 @@ impl Parser {
   // }
   //
 
-  // fn comparison(
+  fn comparison(&mut self) -> Expr {
+        let mut expr = self.term();
+
+        while self.match_tokens(vec![TokenType::Greater, TokenType::GreaterEqual, TokenType::Less, TokenType::LessEqual]) {
+            let operator = self.previous().unwrap().clone();
+            let right = self.term().clone();
+            expr = Expr::Binary(Box::new(expr), operator, Box::new(right));
+        }
+        
+        expr
+  }
   
   
   // private Expr term() {
@@ -67,10 +81,17 @@ impl Parser {
   //   return expr;
   // }
     
-   // fn term(&self) -> Expr {
-   //
-   //
-   // }
+   fn term(&mut self) -> Expr {
+        let mut expr = self.factor();
+        
+        while self.match_tokens(vec![TokenType::Minus, TokenType::Plus]) {
+            let operator = self.previous().unwrap().clone();
+            let right = self.factor().clone();
+            expr = Expr::Binary(Box::new(expr), operator, Box::new(right));
+        }
+        
+        expr
+   }
 
   // private Expr factor() {
   //   Expr expr = unary();
@@ -84,9 +105,17 @@ impl Parser {
   //   return expr;
   // }
     
-   // fn factor(&self) -> Expr {
-   //
-   // }
+   fn factor(&mut self) -> Expr {
+        let mut expr = self.unary();
+
+        while self.match_tokens(vec![TokenType::Slash, TokenType::Star]) {
+            let operator = self.previous().unwrap().clone();
+            let right = self.unary().clone();
+            expr = Expr::Binary(Box::new(expr), operator.clone(), Box::new(right));
+        }
+    
+        expr
+   }
 
   // private Expr unary() {
   //   if (match(BANG, MINUS)) {
@@ -98,13 +127,33 @@ impl Parser {
   //   return primary();
   // }
 
-    fn unary(&self) -> Expr {
+    fn unary(&mut self) -> Expr {
         if self.match_tokens(vec![TokenType::Bang, TokenType::Minus]) {
-            let operator = self.previous();
-            let right = self.unary();
-            return Expr{};
+            let operator = self.previous().unwrap().clone();
+            let right = self.unary().clone();
+            return Expr::Unary(operator, Box::new(right));
         }
+        return self.primary();
     }
+
+   fn expression(&mut self) -> Expr {
+        self.equality()
+   }
+
+  // private Token consume(TokenType type, String message) {
+  //   if (check(type)) return advance();
+  //
+  //   throw error(peek(), message);
+  // }
+
+   fn consume(&mut self, typ: &TokenType, message: &str) -> &Token {
+        if self.check(typ) {
+            return self.advance();    
+        }
+        
+        panic!("peek = {:?}, message = {}", self.peek(), message);
+   }
+
 
   // private Expr primary() {
   //   if (match(FALSE)) return new Expr.Literal(false);
@@ -121,9 +170,15 @@ impl Parser {
   //     return new Expr.Grouping(expr);
   //   }
   // }
-  
+  //  private Expr expression() {
+  //   return equality();
+  // }
+
+
     
-   fn primary(&self) -> Expr {
+   fn primary(&mut self) -> Expr {
+        
+
         if self.match_tokens(vec![TokenType::False]) {
             return Expr::Literal(Literal::False);
         } 
@@ -134,15 +189,25 @@ impl Parser {
             return Expr::Literal(Literal::Nil);
         }
 
-        if self.match_tokens(vec![TokenType::Number(0), TokenType::String(String::from(""))]) {
-            match self.previous().unwrap() {
-                Literal::String()
-            }
-            return Expr::Literal(self.previous().unwrap())
+        // if we match to a Number then a String
+        // return a literal 
+        if self.match_tokens(vec![TokenType::Number(0.0), TokenType::String(String::from(""))]) {
+            println!("matched number or string");
+            return match &self.previous().unwrap().token_type {
+                TokenType::String(s) => Expr::Literal(Literal::String(s.clone())),
+                TokenType::Number(n) => Expr::Literal(Literal::Number(n.clone())),
+                TokenType::Identifier(s) => Expr::Literal(Literal::Identifier(s.clone())),
+                _ => panic!("previous is not String, Number, or Identifier"),
+            };
         }
 
-        
-        
+        if self.match_tokens(vec![TokenType::LeftParen]) {
+            let expr = self.expression();
+            self.consume(&TokenType::RightParen, "Expect ')' after expression");
+            return Expr::Grouping(Box::new(expr));
+        }
+
+        panic!("parser.primary failed to find match for {:?}", self.peek());
    }
 
    fn advance(&mut self) -> &Token {
@@ -156,8 +221,10 @@ impl Parser {
 
    
    fn match_tokens(&mut self, token_types: Vec<TokenType>) -> bool {
+       println!("checking for {:?}", token_types);
        for t in token_types.iter() {
-            if self.check(t) {
+            println!("checking {:?}", t);
+            if self.check(&t) {
                 self.advance();
                 return true;
             }
@@ -169,8 +236,8 @@ impl Parser {
         if self.is_at_end() {
             return false;
         }
-        
-        discriminant(&self.peek().unwrap().token_type) == discriminant(token_type)
+
+        discriminant(&(self.peek().unwrap().token_type)) == discriminant(token_type)
    }
 
    fn previous(&self) -> Option<&Token> { 
@@ -178,7 +245,7 @@ impl Parser {
    }
     
    fn is_at_end(&self) -> bool {
-        self.peek().map_or(false, | x | !matches!(x.token_type, TokenType::Eof))
+        self.peek().map_or(false, | x | matches!(x.token_type, TokenType::Eof))
    }
 
 
@@ -186,7 +253,50 @@ impl Parser {
         self.tokens.iter().nth(self.current)
    }
 
+ // private void synchronize() {
+ //    advance();
+ //
+ //    while (!isAtEnd()) {
+ //      if (previous().type == SEMICOLON) return;
+ //
+ //      switch (peek().type) {
+ //        case CLASS:
+ //        case FUN:
+ //        case VAR:
+ //        case FOR:
+ //        case IF:
+ //        case WHILE:
+ //        case PRINT:
+ //        case RETURN:
+ //          return;
+ //      }
+ //
+ //      advance();
+ //    }
+ //  }
+ //
+    
+   fn sychronize(&mut self)  { 
+        self.advance();
 
+        while !self.is_at_end() {
+            if self.previous().unwrap().token_type == TokenType::Semicolon {
+                return;
+            }
+
+            match self.peek().unwrap().token_type {
+                TokenType::Return => {
+                    return;
+                },
+                _ => {
+                    self.advance();
+                }
+            }; 
+
+        }
+   }
+
+    
 }
 
 
@@ -202,15 +312,3 @@ impl Parser {
   // }
 
 
-  // private Expr equality() {
-  //   Expr expr = comparison();
-  //
-  //   while (match(BANG_EQUAL, EQUAL_EQUAL)) {
-  //     Token operator = previous();
-  //     Expr right = comparison();
-  //     expr = new Expr.Binary(expr, operator, right);
-  //   }
-  //
-  //   return expr;
-  // }
-  //

@@ -13,7 +13,7 @@ mod literal;
 
 use tokio::io::{AsyncWriteExt};
 
-use crate::lib::{expression::{Binary, HandleBar, Ident}, scanner::Scanner };
+use crate::lib::{expression::{Binary, HandleBar, Ident}, parser::Parser, scanner::Scanner };
 
 pub async fn run_file(path: &str) {
 
@@ -64,8 +64,19 @@ pub async fn run_prompt() {
 async fn run(contents: &str) {
     let mut scanner = Scanner::new(contents.to_string());
     let tokens = scanner.scan();
+
+    let mut parser = Parser::new(tokens.to_vec());
+
+    let expr = parser.parse();
+
+    println!("expr = {:?}", expr);
+
+
+
+
+
     
-    println!("tokens: {:?}", tokens);
+    // println!("tokens: {:?}", tokens);
     
     // macros::nothing!("");
 

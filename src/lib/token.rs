@@ -1,7 +1,9 @@
+use std::panic;
+
 use crate::lib::literal::Literal;
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Token {
     pub token_type: TokenType,
     lexeme: String,
@@ -21,7 +23,7 @@ impl Token {
 }
 
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum TokenType {
   // Single-character tokens.
   LeftParen, RightParen, LeftBrace, RightBrace,
@@ -33,10 +35,10 @@ pub enum TokenType {
   Greater, GreaterEqual,
   Less, LessEqual,
 
-  Literal(Literal),
+  // Literal(Literal),
 
   // Literals.
-  // Identifier(String), String(String), Number(f64),
+  Identifier(String), String(String), Number(f64),
 
   // Keywords.
   And, Class, Else, False, Fun, For, If, Nil, Or,
@@ -45,9 +47,32 @@ pub enum TokenType {
   // Special Processing States
   Invalid, Skip,
 
-
-
   Eof
+}
+
+
+impl TokenType {
+    
+    fn unwrap_string(&self) -> &str {
+        match self {
+            Self::String(s) => s,
+            _ => panic!("attempted to unwrap a String from another token type"),
+        }
+    }
+
+    fn unwrap_ident(&self) -> &str {
+        match self {
+            Self::Identifier(s) => s,
+            _ => panic!("attempted to unwrap a Identifier from another token type"),
+        }
+    }
+
+    fn unwrap_number(&self) -> &f64 {
+        match self {
+            Self::Number(n) => n,
+            _ => panic!("attempted to unwrap a Number from another token type"),
+        }
+    }
 }
 
 

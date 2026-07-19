@@ -1,15 +1,25 @@
-use crate::lib::{literal::Literal, token::Token};
+use crate::lib::{token::Token};
 
-// pub enum Literal {
-//     True,
-//     False,
-//     Nil,
-// }
+#[derive(Clone, Debug)]
+pub enum Literal {
+    True,
+    False,
+    Nil,
+    String(String),
+    Number(f64),
+    Identifier(String),
+}
 
+#[derive(Clone, Debug)]
 pub enum Expr {
     Equality,
-    Literal(Literal)
+    Literal(Literal),
+    Grouping(Box<Expr>),
+    Unary(Token, Box<Expr>),
+    Binary(Box<Expr>, Token, Box<Expr>),
 }
+
+
 
 
 // pub struct Expr {}
